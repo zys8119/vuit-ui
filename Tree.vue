@@ -58,22 +58,22 @@ export default {
             type: Boolean,
             default: true
         },
-        // 是否为顶级组件
+        // 缩进单位
         indent: {
             type: Number,
             default: 15
         },
-        // 是否为顶级组件
+        // 缩进级别
         indentIndex: {
             type: Number,
             default: 0
         },
-        // 是否为顶级组件
+        // 指定显示字段
         showNameField: {
             type: String,
             default: "name"
         },
-        // 子节点父级字段
+        // 指定子节点父级字段
         childrenField: {
             type: String,
             default: "children"
@@ -88,7 +88,7 @@ export default {
             type: Number,
             default: 40
         },
-        // 节点高度
+        // 父级节点
         parentNode: {
             type: Object,
             default: Object
