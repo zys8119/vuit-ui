@@ -14,7 +14,7 @@
                 node_top:(isTop && key === 0),
                 checked:checkedMap === ((keyMap)?`${keyMap},${key}`:`${key}`),
             }" @click="toggleClick(item, key,{
-                item:item,
+                data:item,
                 key:key,
                 keyMap:(keyMap)?`${keyMap},${key}`:`${key}`,
                 node_parent:!!item[childrenField],
@@ -23,7 +23,16 @@
                 node_open:!item.node_open,
                 checked:checkedMap === ((keyMap)?`${keyMap},${key}`:`${key}`),
             })">
-                <slot :node="item">{{item[showNameField]}}</slot>
+                <slot :data="item" :node="{
+                data:item,
+                key:key,
+                keyMap:(keyMap)?`${keyMap},${key}`:`${key}`,
+                node_parent:!!item[childrenField],
+                node_child:!item[childrenField],
+                node_top:(isTop && key === 0),
+                node_open:!item.node_open,
+                checked:checkedMap === ((keyMap)?`${keyMap},${key}`:`${key}`),
+            }">{{item[showNameField]}}</slot>
             </div>
             <z-tree v-if="item[childrenField]"
                     :options="item[childrenField]"
@@ -40,8 +49,8 @@
                     @checked="emitChecked"
                     :checked="checkedMap"
             >
-                <template slot-scope="{node}">
-                    <slot :node="node">{{node[showNameField]}}</slot>
+                <template slot-scope="{node, data}">
+                    <slot :node="node" :data="data">{{node[showNameField]}}</slot>
                 </template>
             </z-tree>
         </div>
