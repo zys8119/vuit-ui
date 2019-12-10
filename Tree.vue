@@ -12,6 +12,7 @@
                 node_parent:!!item[childrenField],
                 node_child:!item[childrenField],
                 node_top:(isTop && key === 0),
+                checked:checkedMap === ((keyMap)?`${keyMap},${key}`:`${key}`),
             }" @click="toggleClick(item, key,{
                 item:item,
                 key:key,
@@ -19,7 +20,8 @@
                 node_parent:!!item[childrenField],
                 node_child:!item[childrenField],
                 node_top:(isTop && key === 0),
-                node_open:!item.node_open
+                node_open:!item.node_open,
+                checked:checkedMap === ((keyMap)?`${keyMap},${key}`:`${key}`),
             })">
                 <slot :node="item">{{item[showNameField]}}</slot>
             </div>
@@ -35,6 +37,8 @@
                     @parent="emitParent"
                     @child="emitChild"
                     @node="emitNode"
+                    @checked="emitChecked"
+                    :checked="checkedMap"
             >
                 <template slot-scope="{node}">
                     <slot :node="node">{{node[showNameField]}}</slot>
@@ -102,11 +106,17 @@ export default {
         attime: {
             type: Number,
             default: 300
-        }
+        },
+        // 动画时间
+        checked: {
+            type: String,
+            default: null
+        },
     },
     data() {
         return {
             currentOptions:[],
+            checkedMap:null,
         }
     },
     computed:{
@@ -118,9 +128,13 @@ export default {
     watch: {
         options() {
             this.initOptions();
+        },
+        checked(){
+            this.initChecked();
         }
     },
     mounted() {
+        this.initChecked();
         this.initOptions();
     },
     methods: {
@@ -138,6 +152,11 @@ export default {
         clacHeight(item){
             return this.getNodeIndex(item);
         },
+        // 初始化checked状态
+        initChecked() {
+            // 拷贝数据
+            this.checkedMap = this.checked;
+        },
         // 初始化选项
         initOptions() {
             // 拷贝数据
@@ -145,6 +164,9 @@ export default {
         },
         // 点击切换
         toggleClick(item, key, node) {
+            if(!node.node_parent){
+                this.emitChecked(node.keyMap);
+            }
             item.node_open = !item.node_open;
             this.$set(this.currentOptions, key, item);
             if(node.node_parent){
@@ -168,6 +190,14 @@ export default {
         // 节点切换
         emitNode(node){
             this.$emit('node',node);
+        },
+        // 节点checked状态判断
+        emitChecked(keyMap){
+            if(this.isTop){
+                this.checkedMap = keyMap;
+                return;
+            }
+            this.$emit('checked',keyMap);
         }
     },
 }
