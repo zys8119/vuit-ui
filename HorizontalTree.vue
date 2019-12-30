@@ -3,15 +3,15 @@
         <div class="HorizontalTree add" v-if="type === 'add'">
             <div class="HorizontalTreeItem header">
                 <slot name="header" :childType="childType">
-                    <div  v-if="childType" @click="$emit('add','child_directory', parent)">
-                        <i class="el-icon-plus"></i>新增子菜单
+                    <div  v-if="childType || level > 0" @click="$emit('add','child_directory', parent)">
+                        <i class="el-icon-plus"></i>新增{{level | levelStr}}级菜单
                     </div>
                     <div v-else @click="$emit('add','directory', parent)">
                         <i class="el-icon-plus"></i>新增目录
                     </div>
                 </slot>
             </div>
-            <div class="HorizontalTreeItem header" v-if="childType">
+            <div class="HorizontalTreeItem header" v-if="showBtn && childType && level > 1">
                 <slot name="header-child">
                     <div @click="$emit('add','btn', parent)">
                         <i class="el-icon-plus"></i>新增按钮
@@ -22,14 +22,15 @@
                 <span class="HorizontalTreeItem-label" @click="TreeItemClick(item,key)">
                     <slot :node="item" :type="type">
                         {{item[labelKeyName]}}
-                        <el-dropdown trigger="click">
-                            <span class="el-dropdown-link">
+                        <el-dropdown trigger="click" class="HorizontalTree-el-dropdown">
+                            <span class="el-dropdown-link" @click.stop="stop">
                               <i class="el-icon-more"
                                  style="color: #C2C6CC;margin-left: 8px"></i>
                             </span>
                             <el-dropdown-menu slot="dropdown">
-                              <el-dropdown-item  @click.native="$emit('more','modify', item)">修改</el-dropdown-item>
-                              <el-dropdown-item  @click.native="$emit('more','delete', item)">删除</el-dropdown-item>
+								<el-dropdown-item  @click.native="$emit('more','btn', item, level)">按钮管理</el-dropdown-item>
+								<el-dropdown-item  @click.native="$emit('more','modify', item, level)">修改</el-dropdown-item>
+								<el-dropdown-item  @click.native="$emit('more','delete', item, level)">删除</el-dropdown-item>
                             </el-dropdown-menu>
                         </el-dropdown>
                     </slot>
@@ -38,18 +39,29 @@
             </div>
         </div>
         <div class="HorizontalTree" v-if="!childType && type !== 'add'">
-            <div class="HorizontalTreeItem header">
+            <div class="HorizontalTreeItem header" v-if="showCheckbox">
                 <slot name="header" :childType="childType">
                     <el-checkbox class="el-checkbox" :indeterminate="isIndeterminate" v-model="checkedAll"  @input="checkboxInputAll"></el-checkbox>
                     <span class="HorizontalTreeItem-label">全选</span>
                 </slot>
             </div>
             <div class="HorizontalTreeItem" :class="{check:check(item)}" v-for="(item,key) in options" :key="key">
-                <slot :node="item" :type="type">
-                    <el-checkbox class="el-checkbox" :indeterminate="indeterminateItem(item)"  :value="checkboxItem(checkbox.indexOf(item[valueKeyName]) > -1,item[valueKeyName])" @input="checkboxInput($event,item[valueKeyName],null,item)"></el-checkbox>
-                    <span class="HorizontalTreeItem-label" @click="TreeItemClick(item,key)">{{item[labelKeyName]}}</span>
-                    <i class="el-icon-arrow-right" v-if="item[childKeyName] && item[childKeyName].length > 0" @click="TreeItemClick(item,key)"></i>
-                </slot>
+				<el-checkbox  v-if="showCheckbox" class="el-checkbox" :indeterminate="indeterminateItem(item)"  :value="checkboxItem(checkbox.indexOf(item[valueKeyName]) > -1,item[valueKeyName])" @input="checkboxInput($event,item[valueKeyName],null,item)"></el-checkbox>
+				<span class="HorizontalTreeItem-label" @click="TreeItemClick(item,key)">
+					 <slot :node="item" :type="type">
+						{{item[labelKeyName]}}
+						<el-dropdown trigger="click" class="HorizontalTree-el-dropdown">
+							<span class="el-dropdown-link" @click.stop="stop">
+							  <i class="el-icon-more"
+								 style="color: #C2C6CC;margin-left: 8px"></i>
+							</span>
+							<el-dropdown-menu slot="dropdown">
+							  <el-dropdown-item  @click.native="$emit('more','btn', item, level)">按钮管理</el-dropdown-item>
+							</el-dropdown-menu>
+						</el-dropdown>
+					</slot>
+				</span>
+				<i class="el-icon-arrow-right" v-if="item[childKeyName] && item[childKeyName].length > 0" @click="TreeItemClick(item,key)"></i>
             </div>
         </div>
         <horizontal-tree
@@ -59,12 +71,14 @@
             :expand="currentExpand"
             :expandCopy="currentExpandCopy"
             :level="level+1"
+			:showCheckbox="showCheckbox"
             :isTop="false"
             :isExpandDefault="isExpandDefault"
             :valueKeyName="valueKeyName"
             :checks="checkbox"
             :parent="options[checkId]"
             :type="type"
+            :showBtn="showBtn"
             @on-currentIsExpandDefault="onCurrentIsExpandDefault"
             @add="emitAdd"
             @more="emitMore"
@@ -83,6 +97,9 @@
                 v-if="!childType && !list"
                 :parent="options[checkId]"
                 :type="type"
+                :showBtn="showBtn"
+                :level="level+1"
+                :showCheckbox="showCheckbox"
                 childType
                 @add="emitAdd"
         >
@@ -97,6 +114,7 @@
 </template>
 
 <script>
+    import Utils from "../../assets/js/utils"
     /**
      * @横向递归树组件
      *
@@ -128,7 +146,7 @@
             // child 相关字段
             childKeyName:{
               type:String,
-              default: "list"
+              default: "children"
             },
             // 是否展开默认菜单
             isExpandDefault:{
@@ -160,6 +178,11 @@
               type:Array,
               default:Array
             },
+            // 是否启用复选功能，只有当type != 'add' 时才生效
+            showCheckbox:{
+              type:Boolean,
+              default:true
+            },
             // 当前tree的父节点
             parent:{
               type:Object,
@@ -174,6 +197,16 @@
             childType:{
               type:Boolean,
               default:false
+            },
+            // 是否显示头部新增按钮
+            showBtn:{
+              type:Boolean,
+              default:false
+            }
+        },
+        filters:{
+            levelStr(val){
+                return Utils.number_chinese(val);
             }
         },
         computed:{
@@ -236,6 +269,10 @@
         },
         methods:{
             /**
+			 * 禁止冒泡
+			 * */
+            stop(){},
+            /**
              * 暴露 emit-add
              * @param type add类型（directory、child_directory、btn）
              * @param item add父节点数据
@@ -247,9 +284,10 @@
              * 暴露 emit-more
              * @param type 更多操作类型，（modify、delete）
              * @param item 操作的当前节点数据
+             * @param level 级别
              */
-            emitMore(type,item){
-                this.$emit('more',type,item)
+            emitMore(type,item, level){
+                this.$emit('more',type,item, level)
             },
             /**
              * 获取当前节点的所有子集
@@ -453,8 +491,15 @@
                     min-width: 274px - 18px*2 - 30px;
                     padding-right: 18px*2;
                 }
+
+				.HorizontalTree-el-dropdown{
+					display: none;
+				}
                 &:hover{
                     background-color: #F6F6F6;
+					.HorizontalTree-el-dropdown{
+						display: inline-block;
+					}
                 }
                 &.header{
                     border-bottom: 1px solid #EEEEEE;
@@ -476,14 +521,6 @@
                 .HorizontalTreeItem{
                     &.header{
                         color: #00B31A;
-                    }
-                    .el-dropdown{
-                        display: none;
-                    }
-                    &:hover{
-                        .el-dropdown{
-                            display: inline-block;
-                        }
                     }
                 }
             }
